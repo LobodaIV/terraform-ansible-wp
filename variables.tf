@@ -4,6 +4,10 @@ data "aws_availability_zones" "available" {}
 variable "vpc_cidr" {}
 variable "localip" {}
 variable "domain_name" {}
+variable "db_instance_class" {}
+variable "dbname" {}
+variable "dbuser" {}
+variable "dbpassword" {}
 
 variable "cidrs" {
   type = "map"
