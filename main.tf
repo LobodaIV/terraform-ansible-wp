@@ -407,6 +407,7 @@ resource "aws_elb" "wp_elb" {
 
   name = "${var.domain_name}-elb"
   
+  #elb is going to be deployed to
   subnets = [
     "${aws_subnet.wp_public1_subnet.id}",
     "${aws_subnet.wp_public2_subnet.id}"
@@ -557,4 +558,3 @@ resource "aws_route53_record" "db" {
   ttl = "300"
   records = [ "${aws_db_instance.wp_db.address}" ]
 }
-
