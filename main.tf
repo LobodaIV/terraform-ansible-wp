@@ -206,7 +206,7 @@ resource "aws_route_table_association" "wp_private1_assoc" {
 }
 
 resource "aws_route_table_association" "wp_private2_assoc" {
-  subnet_id      = "${aws_subnet.wp_public2_subnet.id}"
+  subnet_id      = "${aws_subnet.wp_private2_subnet.id}"
   route_table_id = "${aws_default_route_table.wp_private_rt.id}"
 }
 
@@ -230,7 +230,7 @@ resource "aws_security_group" "wp_dev_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["${var.localip}"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
   egress {
     #all outbound traffic
@@ -440,16 +440,16 @@ resource "aws_elb" "wp_elb" {
   }
 }
 
-#----- Golden AMI -----
+#----- WP AMI -----
 
 # random ami id
-resource "random_id" "golden_ami" {
+resource "random_id" "wp_ami_entropy" {
   byte_length = 3
 }
 
 #AMI
-resource "aws_ami_from_instance" "wp_golden" {
-  name = "wp_ami-${random_id.golden_ami.b64}"
+resource "aws_ami_from_instance" "wp_img" {
+  name = "wp_ami-${random_id.wp_ami_entropy.b64}"
   source_instance_id = "${aws_instance.wp_dev.id}"
 
   provisioner "local-exec" {
@@ -468,7 +468,7 @@ EOT
 
 resource "aws_launch_configuration" "wp_lc" {
   name_prefix = "wp_lc-"
-  image_id = "${aws_ami_from_instance.wp_golden.id}"
+  image_id = "${aws_ami_from_instance.wp_img.id}"
   instance_type = "${var.lc_instance_type}"
   security_groups = [ "${aws_security_group.wp_private_sg.id}" ]
   iam_instance_profile = "${aws_iam_instance_profile.s3_access_profile.id}"
@@ -514,7 +514,7 @@ resource "aws_autoscaling_group" "wp_asg" {
 
 #Primary Zone
 resource "aws_route53_zone" "primary" {
-  name = "${var.domain_name}.com"
+  name = "${var.domain_name}.info"
   delegation_set_id = "${var.delegation_set}"
 }
 
@@ -522,7 +522,7 @@ resource "aws_route53_zone" "primary" {
 
 resource "aws_route53_record" "www" {
   zone_id = "${aws_route53_zone.primary.zone_id}"
-  name = "www.${var.domain_name}.com"
+  name = "www.${var.domain_name}.info"
   type = "A"
 
   alias {
@@ -536,7 +536,7 @@ resource "aws_route53_record" "www" {
 
 resource "aws_route53_record" "dev" {
   zone_id = "${aws_route53_zone.primary.zone_id}"
-  name = "dev.${var.domain_name}.com"
+  name = "dev.${var.domain_name}.info"
   type = "A"
   ttl = "300"
   records = ["${aws_instance.wp_dev.public_ip}" ]
@@ -545,7 +545,7 @@ resource "aws_route53_record" "dev" {
 #Private zone
 
 resource "aws_route53_zone" "secondary" {
-  name = "${var.domain_name}.com"
+  name = "${var.domain_name}.info"
   vpc_id = "${aws_vpc.wp_vpc.id}"
 }
 
@@ -553,7 +553,7 @@ resource "aws_route53_zone" "secondary" {
 
 resource "aws_route53_record" "db" {
   zone_id = "${aws_route53_zone.secondary.zone_id}"
-  name = "db.${var.domain_name}.com}"
+  name = "db.${var.domain_name}.info"
   type = "CNAME"
   ttl = "300"
   records = [ "${aws_db_instance.wp_db.address}" ]
