@@ -442,13 +442,13 @@ resource "aws_elb" "wp_elb" {
 #----- Golden AMI -----
 
 # random ami id
-resource "random_id" "golden_ami" {
+resource "random_id" "wp_ami_id" {
   byte_length = 3
 }
 
 #AMI
-resource "aws_ami_from_instance" "wp_golden" {
-  name = "wp_ami-${random_id.golden_ami.b64}"
+resource "aws_ami_from_instance" "wp_ami" {
+  name = "wp_ami-${random_id.wp_ami_id.b64}"
   source_instance_id = "${aws_instance.wp_dev.id}"
 
   provisioner "local-exec" {
@@ -558,3 +558,26 @@ resource "aws_route53_record" "db" {
   records = [ "${aws_db_instance.wp_db.address}" ]
 }
 
+# ----- asg ami -----
+#random ami id
+resource "random_id" "asg_ami" {
+  byte_length = 3
+}
+
+# ami
+resource "aws_ami_from_instance" "asg_ami" {
+  name = "wp_ami-${random_id.asg_ami.b64}"
+  source_instance_id = "${aws_instance.wp_dev.id}"
+
+  provisioner "local-exec" {
+    command = <<EOT
+cat <<EOF > userdata
+#!/bin/bash
+#automatically pool from the bucket that we've created to /var/www/html
+/usr/bin/aws s3 sync s3://${aws_s3_bucket.code.bucket} /var/www/html/
+/bin/touch /var/spool/cron/root
+sudo /bin/echo '*/5 * * * * aws s3 sync s3://${aws_s3_bucket.code.bucket} /var/www/html' >> /var/spool/cron/root
+EOF
+EOT
+  }
+}
